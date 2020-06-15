@@ -17,7 +17,7 @@ var k int
 func main3() {
 
 
-	k = 12
+	k = 15
 	fmt.Println("total ")
 	fmt.Println(len(adults))
 	for i := range adults {
