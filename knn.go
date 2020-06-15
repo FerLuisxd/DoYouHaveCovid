@@ -17,7 +17,7 @@ var k int
 func main3() {
 
 
-	k = 15
+	k = 8
 	fmt.Println("total ")
 	fmt.Println(len(adults))
 	for i := range adults {
@@ -48,7 +48,7 @@ func main3() {
 
 func testCase(trainSetA []Adult,testSetObject Adult, k int) sortedClassVotes {
 	fmt.Println(testSetObject)
-	neighbors := getNeighbors(trainSetA, testSetObject, k)
+	neighbors := getNeighbors2(trainSetA, testSetObject, k)
 	result := getResponse(neighbors)
 	return result
 }
@@ -137,19 +137,30 @@ func getNeighbors(trainingSet []Adult, testRecord Adult, k int) []Adult {
 
 func getNeighbors2(trainingSet []Adult, testRecord Adult, k int) []Adult {
 	var distances distancePairs
+	distancesAux  :=  [][]distancePair{[]distancePair{}}
 	numproc := 10
-
+	// Process 0 esta con len 0 siempre?
     end := make(chan bool)
     for i := 0; i < numproc; i++ {
+		distancesAux = append(distancesAux,[]distancePair{})
         go func(id int) {
-            for i := id; i < len(trainingSet); i += numproc {
-				dist := euclidianDistance(testRecord, trainingSet[i])
-				distances = append(distances, distancePair{trainingSet[i], dist})
+			// log.Printf("Si peudo %d",id)
+			// log.Printf("len %d",len(distancesAux[id]))
+
+            for f := id; f < len(trainingSet); f += numproc {
+				dist := euclidianDistance(testRecord, trainingSet[f])
+	
+				distancesAux[id] = append(distancesAux[id], distancePair{trainingSet[f], dist})
+				if(id == 0){
+					// log.Printf("len %d",len(distancesAux[id]))
+				}
             }
             end <- true
         }(i)
     }
     for i := 0; i < numproc; i++ {
+		log.Printf("Len por process %d %d", i,len(distancesAux[i]))
+		distances = append(distances,distancesAux[i]...)
         <-end
     }
 

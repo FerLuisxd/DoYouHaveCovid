@@ -11,7 +11,7 @@ import (
     // "net"
     
 	"encoding/json"
-	"math/rand"
+	// "math/rand"
 	"net/http"
     // "strconv"
 
@@ -33,10 +33,10 @@ type Adult struct {
     Runny_Nose int `json:"runny_Nose"`
     Diarrhea int `json:"diarrhea"`
     None_Experiencing int  `json:"none_Experiencing"`
-    Age int  `json:"age"`
-    Gender int   `json:"gender"`
+    Age float64  `json:"age"`
+    Gender float64   `json:"gender"`
     Severity int   `json:"severity"`
-    Contact int   `json:"contact"`
+    Contact float64   `json:"contact"`
     Country string   `json:"country"`
 }
 
@@ -72,34 +72,34 @@ func lineToStruc(lines [][]string){
 			Contact_Yes,_ := strconv.Atoi(strings.TrimSpace(line[25]))
 			Country := strings.TrimSpace(line[26])
 
-			Age:= 0
+			Age:= 0.0
 			if(Age_0_9 == 1){
 				Age = 0
 			}
 			if(Age_10_19 == 1){
-				Age = 1
+				Age = 0.25
 			}
 			if(Age_20_24 == 1){
-				Age = 2
+				Age = 0.5
 			}
 			if(Age_25_59 == 1){
-				Age = 3
+				Age = 0.75
 			}
 			if(Age_60 == 1){
-				Age = 4
+				Age = 1
 			}
 			
 			
 
-			Gender := 0
+			Gender := 0.0
 			if(Gender_Transgender == 1){
 				Gender = 0
 			}
 			if(Gender_Female == 1){
-				Gender = 1
+				Gender = 0.5
 			}
 			if(Gender_Male == 1){
-				Gender = 2
+				Gender = 1
 			}
 
 		
@@ -121,15 +121,15 @@ func lineToStruc(lines [][]string){
 
 		
 
-			Contact:= 0
+			Contact:= 0.0
 			if(Contact_Dont_Know == 1){
-				Contact = 1
+				Contact = 0.5
 			}
 			if(Contact_No == 1){
 				Contact = 0
 			}
 			if(Contact_Yes == 1){
-				Contact = 2
+				Contact = 1
 			}
 
 			
@@ -215,7 +215,7 @@ func getCategory(w http.ResponseWriter, r *http.Request) {
     var adult Adult
     _ = json.NewDecoder(r.Body).Decode(&adult)
     
-    k := 20 +rand.Intn(20)
+    k := 8
     fmt.Println(k)
     result := testCase(adults,adult,k)
     fmt.Printf("Predicted: %d, Actual: %d\n", result[0].key, adult.Severity)
@@ -224,9 +224,10 @@ func getCategory(w http.ResponseWriter, r *http.Request) {
 	json.Set("knn", result[0].key)
 	json.Set("actual", adult.Severity)
     json.Set("predicted", result[0].key == adult.Severity)
-    
-    adults = append(adults, adult)
-    
+    if(adult.Severity >= 0){
+		fmt.Println("added?")
+		adults = append(adults, adult)
+	}
     payload, _ := json.MarshalJSON()
     w.Write(payload)
 }
