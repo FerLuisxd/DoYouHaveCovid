@@ -1,0 +1,10 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: example-service
+spec:
+  ports:
+  - name: http
+    port: 8000
+  selector:
+    app: example
