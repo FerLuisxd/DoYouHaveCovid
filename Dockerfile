@@ -1,5 +1,4 @@
 FROM golang:1.14.4 as builder
-COPY go.mod go.sum ./
 RUN go mod download
 RUN go get github.com/bitly/go-simplejson
 RUN go get github.com/gorilla/mux

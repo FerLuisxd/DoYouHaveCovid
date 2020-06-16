@@ -2,7 +2,7 @@ apiVersion: skaffold/v1
 kind: Config
 build:
   artifacts:
-  - image: zarvis/example-go
+  - image: ferluisxd/example-go
 deploy:
   kubectl:
     manifests:
