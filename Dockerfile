@@ -1,5 +1,4 @@
 FROM golang:1.14.4 as builder
-RUN go mod download
 RUN go get github.com/bitly/go-simplejson
 RUN go get github.com/gorilla/mux
 RUN go get github.com/gorilla/handlers
