@@ -14,17 +14,13 @@ import (
 	// "math/rand"
 	"net/http"
     // "strconv"
-
+	"crypto/sha256"
+	"time"
+	"encoding/hex"
     "github.com/gorilla/mux"
     "github.com/gorilla/handlers"
-	"github.com/bitly/go-simplejson"
-	
-	"math"
-	// "math/rand"
-	"sort"
-	"time"
+    "github.com/bitly/go-simplejson"
 )
-var adults []Adult
 type Adult struct {
 	Id     int  `json:"id"`
 	Fever     int  `json:"fever"`
@@ -45,228 +41,38 @@ type Adult struct {
     Country string   `json:"country"`
 }
 
-var testSet []Adult
-var trainSet []Adult
-var k int 
-func main3() {
 
 
-	k = 8
-	fmt.Println("total ")
-	fmt.Println(len(adults))
-	for i := range adults {
-		if i < 10 {
-			testSet = append(testSet, adults[i])
-		} else {
-		trainSet = append(trainSet, adults[i])
-		}
-	}
+type BlockChain struct {
+	Id int	`json:"id"`
+	Timestamp int64	`json:"timestamp"`
+	Data Adult	`json:"data"`
+	PrecedingHash string `json:"precedingHash"`
+	Hash string	`json:"hash"`
+}
 
-	var predictions []int
-	fmt.Println("test lenght")
-	fmt.Println(len(testSet))
-	start := time.Now()
-	for x := range testSet {
-		// neighbors := getNeighbors(trainSet, testSet[x], k)
-		// result := getResponse(neighbors)
-		result := testCase(trainSet,testSet[x],k)
-		predictions = append(predictions, result[0].key)
-		fmt.Printf("Predicted: %d, Actual: %d\n", result[0].key, testSet[x].Severity)
-	}
-    elapsed := time.Since(start)
-	log.Printf("Binomial took %s", elapsed)
+var adults []Adult
+var blockChains []BlockChain
+
+
+func toBlockChainObject(adult Adult, previousHash string) BlockChain {
+	var blockChain BlockChain
+
+	blockChain.Id = adult.Id
+	blockChain.Timestamp =  time.Now().Unix()
+	blockChain.Data = adult
 	
-	accuracy := getAccuracy(testSet, predictions)
-	fmt.Printf("Accuracy con una diferencia +-1 nivel: %f%s\n", accuracy, "%")
-}
-
-func testCase(trainSetA []Adult,testSetObject Adult, k int) sortedClassVotes {
-	fmt.Println(testSetObject)
-	neighbors := getNeighbors2(trainSetA, testSetObject, k)
-	result := getResponse(neighbors)
-	return result
-}
-
-
-func getAccuracy(testSet []Adult, predictions []int) float64 {
-	correct := 0
-
-	for x := range testSet {
-		difference := math.Abs(float64(testSet[x].Severity - predictions[x]))
-		if testSet[x].Severity == predictions[x] {
-			correct += 100
-		} else if difference <= 33 {
-			correct += 100
-		} else if difference> 33  && difference<=66 {
-			correct += 33
-		}
-	}
-
-	return (float64(correct) / float64(len(testSet)*100)) * 100.00
-}
-
-type classVote struct {
-	key   int
-	value int
-}
-
-type sortedClassVotes []classVote
-
-func (scv sortedClassVotes) Len() int           { return len(scv) }
-func (scv sortedClassVotes) Less(i, j int) bool { return scv[i].value < scv[j].value }
-func (scv sortedClassVotes) Swap(i, j int)      { scv[i], scv[j] = scv[j], scv[i] }
-
-func getResponse(neighbors []Adult) sortedClassVotes {
-	classVotes := make(map[int]int)
-
-	for x := range neighbors {
-		response := neighbors[x].Severity
-		if contains(classVotes, response) {
-			classVotes[response] += 1
-		} else {
-			classVotes[response] = 1
-		}
-	}
-
-	scv := make(sortedClassVotes, len(classVotes))
-	i := 0
-	for k, v := range classVotes {
-		scv[i] = classVote{k, v}
-		i++
-	}
-
-	sort.Sort(sort.Reverse(scv))
-	return scv
-}
-
-type distancePair struct {
-	record   Adult
-	distance float64
-}
-
-type distancePairs []distancePair
-
-func (slice distancePairs) Len() int           { return len(slice) }
-func (slice distancePairs) Less(i, j int) bool { return slice[i].distance < slice[j].distance }
-func (slice distancePairs) Swap(i, j int)      { slice[i], slice[j] = slice[j], slice[i] }
-
-func getNeighbors(trainingSet []Adult, testRecord Adult, k int) []Adult {
-	var distances distancePairs
-	for i := range trainingSet {
-		dist := euclidianDistance(testRecord, trainingSet[i])
-		distances = append(distances, distancePair{trainingSet[i], dist})
-	}
-
-	sort.Sort(distances)
-	log.Printf("Distance len %d", len(distances))
-
-	var neighbors []Adult
-
-	for x := 0; x < k; x++ {
-		neighbors = append(neighbors, distances[x].record)
-	}
-
-	return neighbors
-}
-
-func getNeighbors2(trainingSet []Adult, testRecord Adult, k int) []Adult {
-	var distances distancePairs
-	distancesAux  :=  [][]distancePair{[]distancePair{}}
-	numproc := 10
-	// Process 0 esta con len 0 siempre?
-    end := make(chan bool)
-    for i := 0; i < numproc; i++ {
-		distancesAux = append(distancesAux,[]distancePair{})
-        go func(id int) {
-			// log.Printf("Si peudo %d",id)
-			// log.Printf("len %d",len(distancesAux[id]))
-
-            for f := id; f < len(trainingSet); f += numproc {
-				dist := euclidianDistance(testRecord, trainingSet[f])
+	out, _ := json.Marshal(blockChain) // CONVERTIR A JSON 
+	// fmt.Println(string(out)) // IMPRIME SOLO ID
+	// fmt.Println(blockChain) // IMPRIME TODO EL OBJ
+	blockChain.PrecedingHash = previousHash
 	
-				distancesAux[id] = append(distancesAux[id], distancePair{trainingSet[f], dist})
-				if(id == 0){
-					// log.Printf("len %d",len(distancesAux[id]))
-				}
-            }
-            end <- true
-        }(i)
-    }
-    for i := 0; i < numproc; i++ {
-		log.Printf("Len por process %d %d", i,len(distancesAux[i]))
-		distances = append(distances,distancesAux[i]...)
-        <-end
-    }
-
-	sort.Sort(distances)
-	log.Printf("Distance len %d", len(distances))
-
-	var neighbors []Adult
-
-	for x := 0; x < k; x++ {
-		neighbors = append(neighbors, distances[x].record)
-	}
-
-	return neighbors
-}
-
-
-func concurrent(){
-	
-		// 	go func(instanceOne Adult, instanceTwo Adult){
-	// 		var distance float64
-
-	// distance += math.Pow(float64((instanceOne.Fnlwgt - instanceTwo.Fnlwgt)), 2)
-	// distance += math.Pow(float64((instanceOne.EducationNum - instanceTwo.EducationNum)), 2)
-	// distance += math.Pow(float64((instanceOne.CapitalGain - instanceTwo.CapitalGain)), 2)
-	// distance += math.Pow(float64((instanceOne.CapitalLoss - instanceTwo.CapitalLoss)), 2)
-	// distance += math.Pow(float64((instanceOne.Hours - instanceTwo.Hours)), 2)
-	// distance += math.Pow(float64((instanceOne.Sex - instanceTwo.Hours)), 2)
-	
-	// dist := math.Sqrt(distance)
-
-	// distances = append(distances, distancePair{instanceTwo, dist})
-
-	// 	}(testRecord,trainingSet[i])
-}
-
-func euclidianDistance(instanceOne Adult, instanceTwo Adult) float64 {
-	var distance float64
-
-	distance += math.Pow(float64((instanceOne.Fever - instanceTwo.Fever)), 2)
-	distance += math.Pow(float64((instanceOne.Tiredness - instanceTwo.Tiredness)), 2)
-	distance += math.Pow(float64((instanceOne.Dry_Cough - instanceTwo.Dry_Cough)), 2)
-	distance += math.Pow(float64((instanceOne.Difficulty_in_Breathing - instanceTwo.Difficulty_in_Breathing)), 2)
-	distance += math.Pow(float64((instanceOne.None_Sympton - instanceTwo.None_Sympton)), 2)
-	distance += math.Pow(float64((instanceOne.Sore_Throat - instanceTwo.Sore_Throat)), 2)
-	distance += math.Pow(float64((instanceOne.Pains - instanceTwo.Pains)), 2)
-	distance += math.Pow(float64((instanceOne.Nasal_Congestion - instanceTwo.Nasal_Congestion)), 2)
-	distance += math.Pow(float64((instanceOne.Runny_Nose - instanceTwo.Runny_Nose)), 2)
-	distance += math.Pow(float64((instanceOne.Diarrhea - instanceTwo.Diarrhea)), 2)
-	distance += math.Pow(float64((instanceOne.None_Experiencing - instanceTwo.None_Experiencing)), 2)
-	distance += math.Pow(float64((instanceOne.Age - instanceTwo.Age)), 2)
-	distance += math.Pow(float64((instanceOne.Gender - instanceTwo.Gender)), 2)
-	distance += math.Pow(float64((instanceOne.Contact - instanceTwo.Contact)), 2)
-	// distance += math.Pow(float64((instanceOne.Severity - instanceTwo.Severity)), 2)
-
-	return math.Sqrt(distance)
-}
-
-
-func errHandle(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func contains(votesMap map[int]int, name int) bool {
-	for s, _ := range votesMap {
-		if s == name {
-			return true
-		}
-	}
-
-	return false
+	h := sha256.New()
+	h.Write(out)
+	sha256_hash := hex.EncodeToString(h.Sum(nil))
+	blockChain.Hash = sha256_hash
+		
+	return blockChain
 }
 
 func lineToStruc(lines [][]string){
@@ -336,16 +142,16 @@ func lineToStruc(lines [][]string){
 			// TESTING
 			Severity:= 0
 			if(Severity_Mild == 1){
-				Severity = 33
+				Severity = 3
 			}
 			if(Severity_Moderate == 1){
-				Severity = 66
+				Severity = 6
 			}
 			if(Severity_None == 1){
 				Severity = 0
 			}
 			if(Severity_Severe == 1){
-				Severity = 100
+				Severity = 10
 			}
 
 		
@@ -361,8 +167,7 @@ func lineToStruc(lines [][]string){
 				Contact = 1
 			}
 
-			
-            adults = append(adults,Adult{
+			adult := Adult{
 				Id:i,
 				Fever:Fever,
 				Tiredness:Tiredness,
@@ -380,8 +185,19 @@ func lineToStruc(lines [][]string){
 				Severity:Severity,
 				Contact:Contact,
 				Country:Country,
-			})
+			}
+            adults = append(adults,adult)
 			
+			if(i == 0){
+				blockChain := toBlockChainObject(adult,"0")
+				blockChains = append(blockChains,blockChain)
+			} else {
+				blockChain := toBlockChainObject(adult,blockChains[i-1].Hash)
+				blockChains = append(blockChains, blockChain )
+			}
+			// fmt.Println(blockChains)
+
+
 			i++
         }
 }
@@ -414,6 +230,28 @@ func getAdults(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(adults)
 }
 
+func getBlockChains(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(blockChains)
+}
+
+func getBlockChainsLimited(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+
+	start,_ := strconv.Atoi(params["start"])
+	end,_ := strconv.Atoi(params["end"])
+
+	var arr []BlockChain
+	for i := start; i < end; i++ {
+		if(i < len(blockChains)){
+			arr = append(arr,blockChains[i])
+		}
+	}
+	json.NewEncoder(w).Encode(arr)
+}
+
+
 // Get single adult
 func getAdult(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -428,18 +266,24 @@ func getAdult(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewEncoder(w).Encode(&Adult{})
 }
-
-// Get single adult
-func getCategory(w http.ResponseWriter, r *http.Request) {
-    // w.Header().Set("Content-Type", "text/html; charset=utf-8")
-    // w.Header().Set("Access-Control-Allow-Origin", "*")
-    w.Header().Set("Access-Control-Allow-Origin", "*")
-    // w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
- 
-
+func getBlockChain(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-    // params := mux.Vars(r) // Gets params
+	params := mux.Vars(r) // Gets params
+	// Loop through adults and find one with the id from the params
+	for _, item := range blockChains {
+        id,_ := strconv.Atoi(params["id"])
+		if item.Id == id {
+			json.NewEncoder(w).Encode(item)
+			return
+		}
+	}
+	json.NewEncoder(w).Encode(&BlockChain{})
+}
 
+
+func getCategory(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
 
     var adult Adult
     _ = json.NewDecoder(r.Body).Decode(&adult)
@@ -452,11 +296,34 @@ func getCategory(w http.ResponseWriter, r *http.Request) {
 	json := simplejson.New()
 	json.Set("knn", result[0].key)
 	json.Set("actual", adult.Severity)
-    json.Set("predicted", result[0].key == adult.Severity)
-    if(adult.Severity >= 0){
-		fmt.Println("added?")
-		adults = append(adults, adult)
-	}
+	json.Set("predicted", result[0].key == adult.Severity)
+	adult.Id = len(adults)
+	adults = append(adults, adult)
+	blockChain := toBlockChainObject(adult,blockChains[len(blockChains)-1].Hash)
+	blockChains = append(blockChains, blockChain )
+
+    payload, _ := json.MarshalJSON()
+    w.Write(payload)
+}
+
+func getCategoryDontAdd(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
+
+    var adult Adult
+    _ = json.NewDecoder(r.Body).Decode(&adult)
+    
+    k := 8
+    fmt.Println(k)
+    result := testCase(adults,adult,k)
+    fmt.Printf("Predicted: %d, Actual: %d\n", result[0].key, adult.Severity)
+    
+	json := simplejson.New()
+	json.Set("knn", result[0].key)
+	json.Set("actual", adult.Severity)
+	json.Set("predicted", result[0].key == adult.Severity)
+
+
     payload, _ := json.MarshalJSON()
     w.Write(payload)
 }
@@ -473,7 +340,7 @@ func createAdult(w http.ResponseWriter, r *http.Request) {
 
 
 func main() {
-    lines, err := readFile("data/Cleaned-Data.csv")
+    lines, err := readFile("data/Cleaned-Data-slim.csv")
     if err != nil {
         panic(err)
     }
@@ -486,7 +353,13 @@ func main() {
 	r.HandleFunc("/adults", getAdults).Methods("GET")
 	r.HandleFunc("/adults/{id}", getAdult).Methods("GET")
 	r.HandleFunc("/adults", createAdult).Methods("POST")
-    r.HandleFunc("/knn", getCategory).Methods("POST")
+	r.HandleFunc("/knn", getCategory).Methods("POST")
+	r.HandleFunc("/knn/without", getCategoryDontAdd).Methods("POST")
+	
+	r.HandleFunc("/blockchain", getBlockChains).Methods("GET")
+	r.HandleFunc("/blockchain/{id}", getBlockChain).Methods("GET")
+	r.HandleFunc("/limited/{start}/{end}", getBlockChainsLimited).Methods("GET")
+    // r.HandleFunc("/knn", getCategory).Methods("POST")
     
 	headers := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"})
 	methods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE"})
