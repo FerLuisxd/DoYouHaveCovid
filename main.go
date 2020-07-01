@@ -340,7 +340,7 @@ func createAdult(w http.ResponseWriter, r *http.Request) {
 
 
 func main() {
-    lines, err := readFile("data/Cleaned-Data-slim.csv")
+    lines, err := readFile("data/Cleaned-Data.csv")
     if err != nil {
         panic(err)
     }

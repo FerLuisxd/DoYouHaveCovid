@@ -19,11 +19,7 @@ func main3() {
 	// fmt.Println("total ")
 	fmt.Println(len(adults))
 	for i := range adults {
-		if i < 3 {
-			testSet = append(testSet, adults[i])
-		} else {
 		trainSet = append(trainSet, adults[i])
-		}
 	}
 
 	var predictions []int
